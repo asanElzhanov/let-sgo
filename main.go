@@ -1,41 +1,20 @@
-package main
-
-import (
-	"encoding/json"
-	"fmt"
-	"net/http"
-)
-
-type Response struct {
-	Status  string `json:"status"`
-	Message string `json:"message"`
-}
-
-func main() {
-	http.HandleFunc("/", receiveData)
-	fmt.Println("Сервер запущен на порту 8080")
-	if err := http.ListenAndServe(":8080", nil); err != nil {
-		panic(err)
-	}
-}
-
 func receiveData(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "Метод не поддерживается", http.StatusMethodNotAllowed)
+		http.Error(w, "ERROR", http.StatusMethodNotAllowed)
 		return
 	}
 
 	var data map[string]interface{}
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-		http.Error(w, "Ошибка при чтении JSON", http.StatusBadRequest)
+		http.Error(w, "ERROR", http.StatusBadRequest)
 		return
 	}
 
-	message, ok := data["message"]
+	messageRaw, ok := data["message"]
 	if !ok {
 		response := Response{
 			Status:  "400",
-			Message: "Некорректное JSON-сообщение",
+			Message: "ERROR",
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusBadRequest)
@@ -43,11 +22,23 @@ func receiveData(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fmt.Println("Сообщение от клиента:", message)
+	message, ok := messageRaw.(string)
+	if !ok {
+		response := Response{
+			Status:  "400",
+			Message: "ERROR",
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusBadRequest)
+		json.NewEncoder(w).Encode(response)
+		return
+	}
+
+	fmt.Println("MESSAGE:", message)
 
 	response := Response{
 		Status:  "success",
-		Message: "Данные успешно приняты",
+		Message: "SUCCESS",
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
